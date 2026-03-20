@@ -1,0 +1,544 @@
+<?xml version="1.1" encoding="UTF-8"?>
+
+<!--
+ * See the NOTICE file distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * This is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License as
+ * published by the Free Software Foundation; either version 2.1 of
+ * the License, or (at your option) any later version.
+ *
+ * This software is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this software; if not, write to the Free
+ * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+ * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+-->
+
+<xwikidoc version="1.6" reference="SyntheticDataGenerator.WebHome" locale="">
+  <web>SyntheticDataGenerator</web>
+  <name>WebHome</name>
+  <language/>
+  <defaultLanguage/>
+  <translation>0</translation>
+  <creator>xwiki:XWiki.Admin</creator>
+  <parent>Main.WebHome</parent>
+  <author>xwiki:XWiki.Admin</author>
+  <contentAuthor>xwiki:XWiki.Admin</contentAuthor>
+  <version>1.1</version>
+  <title>SyntheticDataGenerator</title>
+  <comment/>
+  <minorEdit>false</minorEdit>
+  <syntaxId>xwiki/2.1</syntaxId>
+  <hidden>true</hidden>
+  <content>{{velocity}}
+  $services.security.authorization.checkAccess('admin', "wiki:${xcontext.database}")
+  #set ($targetSpace = $request.targetSpace)
+  #if ("$!targetSpace" == '')
+    #set ($targetSpace = 'TestPages')
+  #end
+  #set ($usersQuota = $numbertool.integer($request.usersQuota))
+  #set ($documentsQuota = $numbertool.integer($request.documentsQuota))
+  {{html}}
+    &lt;form&gt;
+      &lt;dl&gt;
+        &lt;dt&gt;Users&lt;/dt&gt;
+        &lt;dd class="box"&gt;
+          &lt;label&gt;Number of users: &lt;input type="number" name="usersQuota"#if($usersQuota) value="$usersQuota"#end/&gt;&lt;/label&gt;
+        &lt;/dd&gt;
+        &lt;dt&gt;Pages&lt;/dt&gt;
+        &lt;dd class="box"&gt;
+          &lt;label&gt;Target space: &lt;input type="input" name="targetSpace"#if($targetSpace) value="${escapetool.xml($targetSpace)}"#end/&gt;&lt;/label&gt;
+          &lt;br/&gt;
+          &lt;label&gt;Number of documents: &lt;input type="number" name="documentsQuota"#if($documentsQuota) value="$documentsQuota"#end/&gt;&lt;/label&gt;
+        &lt;/dd&gt;
+      &lt;/dl&gt;
+      &lt;input type="submit" value="Start" /&gt;
+    &lt;/form&gt;
+  {{/html}}
+{{/velocity}}
+
+----
+
+{{async context="request.*"}}
+{{box cssClass="floatinginfobox" title="**Contents**"}}{{toc/}}{{/box}}
+
+{{groovy output="false"}}
+package org.xwiki.contrib.fill;
+
+import org.xwiki.model.reference.DocumentReference
+import com.xpn.xwiki.doc.XWikiDocument
+import com.xpn.xwiki.doc.XWikiAttachment
+import com.xpn.xwiki.XWikiContext
+import org.apache.commons.io.input.BoundedInputStream
+import org.xwiki.contrib.fill.*;
+
+public class FillStartingEvent implements org.xwiki.observation.event.BeginFoldEvent
+{
+    @Override
+    public boolean matches(Object otherEvent)
+    {
+        return otherEvent instanceof FillStartingEvent;
+    }
+}
+
+public class FillEndedEvent implements org.xwiki.observation.event.EndFoldEvent
+{
+    @Override
+    public boolean matches(Object otherEvent)
+    {
+        return otherEvent instanceof FillEndedEvent;
+    }
+}
+
+public class FillUtils
+{
+  private def services;
+
+  private def observation;
+
+  FillUtils(services)
+  {
+    this.services = services
+
+    this.observation = this.services.component.getInstance(org.xwiki.observation.ObservationManager)
+  }
+
+  void begin()
+  {
+    this.observation.notify(new org.xwiki.contrib.fill.FillStartingEvent(), null)
+  }
+
+  void end()
+  {
+    this.observation.notify(new org.xwiki.contrib.fill.FillEndedEvent(), null)
+  }
+
+  void setBigContent(def doc, def size)
+  {
+    def sb = new StringBuilder(size * 1000)
+    def chunk = ('A' * 99) + '\n'
+    chunk += ('B' * 99) + '\n'
+    chunk += ('C' * 99) + '\n'
+    chunk += ('D' * 99) + '\n'
+    chunk += ('E' * 99) + '\n'
+    chunk += ('F' * 99) + '\n'
+    chunk += ('G' * 99) + '\n'
+    chunk += ('H' * 99) + '\n'
+    chunk += ('I' * 99) + '\n'
+    chunk += ('J' * 98)
+    for (int i = 0; i &lt; size; i++) {
+        sb.append(chunk + '\n\n')
+    }
+    doc.setContent(sb.toString())
+    println sb.length()
+  }
+
+  void addBigAttachment(def fileName, def doc, def size)
+  {
+    def tempFile = File.createTempFile('large_data', '.bin', services.component.getInstance(org.xwiki.environment.Environment.class).getTemporaryDirectory())
+    try {
+        def bufferSize = 1024 * 1024  // 1MB
+        def buffer = new byte[bufferSize] // Initialized to zeros
+
+        // Write 4GB to temp file in 1MB chunks
+        def fos = new BufferedOutputStream(new FileOutputStream(tempFile), bufferSize)
+        try {
+            for (int i = 0; i &lt; size; i++) {
+                fos.write(buffer)
+                if ((i + 1) % 256 == 0) {
+                    fos.flush()
+                }
+            }
+        } finally {
+          fos.close()
+        }
+        buffer = null
+
+        // Attach using FileInputStream so XWiki streams from disk
+        def fis = new FileInputStream(tempFile)
+        try {
+            doc.addAttachment(fileName, fis)
+        } finally {
+            fis.close()
+        }
+    } finally {
+        // Always clean up the temp file
+        tempFile.delete()
+    }
+  }
+}
+
+fillTool = new FillUtils(services)
+{{/groovy}}
+
+{{velocity output="false"}}
+### DOCUMENTS
+#############
+
+#macro(addSpace $space)
+  #set ($spaceReference = $services.model.resolveSpace($space))
+  #set ($spaceDocument = $xwiki.getDocument($spaceReference))
+  #if ($spaceDocument.isNew())
+    #set ($void = $spaceDocument.save('Auto-generated space'))
+  #end
+#end
+
+#macro(createMegabyteTxt)
+  ## Build a ~1KB block to repeat
+  #set($block = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-')
+  ## Repeat block to ~1KB (~1024 chars)
+  #set($chunk = '')
+  #foreach($j in [1..16])
+    #set($chunk = "${chunk}${block}")
+  #end
+  ## chunk is now ~1024 characters
+  ## Repeat chunk to build ~1MB string (~1024 KB)
+  #set($megabyteTxt = '')
+  #foreach($k in [1..1024])
+    #set($megabyteTxt = "${megabyte}${chunk}")
+  #end
+#end
+
+#macro(addHugeDocument $targetSpace $contentSize $maxObjects $attachmentSize)
+  #set ($docReference = "${targetSpace}.HugePage.WebHome")
+  #set ($doc = $xwiki.getDocument($docReference))
+  #if (!$doc.isNew())
+    {{info}}
+      Skip creation of huge document [[$docReference]], it already existed.
+    {{/info}}
+  #else
+    #set ($void = $fillTool.setBigContent($doc, $contentSize))
+    #set ($void = $doc.setTitle("Huge Document"))
+    ##
+    ## Objects
+    #foreach($i in [1..$maxObjects])
+      #set ($obj = $doc.newObject('XWiki.WikiMacroParameterClass'))
+    #end
+    ##
+    ## Create attachment
+    $fillTool.addBigAttachment('large_data.bin', $doc, $attachmentSize)
+    ##
+    ## Save
+    #set ($void = $doc.save("Auto-generated document ${i}"))
+    #set ($created = $created + 1)
+    {{success}}
+      Successfully created the document with ${maxObjects} objects and a ${attachmentSize}MB attachments: [[$docReference]].
+    {{/success}}
+  #end
+#end
+
+#macro(addDocuments $maxDocument $targetSpace $maxObjects $maxAttachments)
+  #if ($maxAttachments &gt; 0)
+    #createMegabyteTxt()
+  #end
+  ##
+  #set ($created = 0)
+  #set ($skipped = 0)
+  #addSpace($targetSpace)
+  #foreach ($i in [1..$maxDocument])
+    #set ($docReference = "${targetSpace}.Document${i}.WebHome")
+    #set ($doc = $xwiki.getDocument($docReference))
+    #if (!$doc.isNew())
+      #set ($skipped = $skipped + 1)
+    #else
+      ## Build a set of random links to other generated documents
+      #set ($linksSection = '== Related Documents ==
+
+The following documents are related to this one:
+
+')
+      #set ($linkCount = 8)
+      #foreach ($l in [1..$linkCount])
+        ## Pseudo-random target: distribute links across the doc set
+        #set ($target = (($i * 7 + $l * 13 + 3) % $maxDocument) + 1)
+        ## Avoid self-links
+        #if ($target == $i)
+          #set ($target = ($target % $maxDocument) + 1)
+        #end
+        #set ($linksSection = "${linksSection}* [[Generated Document ${target}&gt;&gt;doc:${targetSpace}.Document${target}]]
+")
+      #end
+      ##
+      ## Inline links woven into paragraph text
+      #set ($inlineTarget1 = (($i * 3 + 5) % $maxDocument) + 1)
+      #if ($inlineTarget1 == $i)
+        #set ($inlineTarget1 = ($inlineTarget1 % $maxDocument) + 1)
+      #end
+      #set ($inlineTarget2 = (($i * 11 + 2) % $maxDocument) + 1)
+      #if ($inlineTarget2 == $i)
+        #set ($inlineTarget2 = ($inlineTarget2 % $maxDocument) + 1)
+      #end
+      #set ($inlineTarget3 = (($i * 17 + 9) % $maxDocument) + 1)
+      #if ($inlineTarget3 == $i)
+        #set ($inlineTarget3 = ($inlineTarget3 % $maxDocument) + 1)
+      #end
+      ##
+      ## Padding paragraphs with additional cross-links
+      #set ($padding = '')
+      #foreach ($j in [1..5])
+        #set ($padTarget = (($i * 5 + $j * 9 + 1) % $maxDocument) + 1)
+        #if ($padTarget == $i)
+          #set ($padTarget = ($padTarget % $maxDocument) + 1)
+        #end
+        #set ($padding = "${padding}
+
+Paragraph block ${j} for document ${i}: Aliquam erat volutpat. Nam dui mi, tincidunt quis, accumsan porttitor, facilisis luctus, metus. Phasellus ultrices nulla quis nibh. Quisque a lectus. See also [[Document ${padTarget}&gt;&gt;doc:${targetSpace}.Document${padTarget}]] for more details. Pellentesque fermentum dolor. Aliquam quam lectus, facilisis auctor, ultrices ut, elementum vulputate, nunc.")
+      #end
+      #set ($mediumDocumentContentTemplate = "= Generated Document ${i} =
+
+This is an automatically generated document number **${i}** out of **${maxDocument}**.
+
+== Overview ==
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris. This topic is also covered in [[Generated Document ${inlineTarget2}&gt;&gt;doc:${targetSpace}.Document${inlineTarget2}]] and [[Generated Document ${inlineTarget3}&gt;&gt;doc:${targetSpace}.Document${inlineTarget3}]].
+
+== Section 1: Introduction ==
+
+Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Vestibulum tortor quam, feugiat vitae, ultricies eget, tempor sit amet, ante. Donec eu libero sit amet quam egestas semper.
+
+* Item one for document ${i} — see also [[Document ${inlineTarget1}&gt;&gt;doc:${targetSpace}.Document${inlineTarget1}]]
+* Item two with some additional text to increase size
+* Item three with even more descriptive content here
+* Item four containing relevant placeholder information
+* Item five referencing [[Document ${inlineTarget2}&gt;&gt;doc:${targetSpace}.Document${inlineTarget2}]]
+
+== Section 2: Details ==
+
+Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.
+
+|=Column A|=Column B|=Column C|=Column D
+|Row ${i}-1|Data A|[[Doc ${inlineTarget1}&gt;&gt;doc:${targetSpace}.Document${inlineTarget1}]]|Data C
+|Row ${i}-2|Data D|Data E|[[Doc ${inlineTarget2}&gt;&gt;doc:${targetSpace}.Document${inlineTarget2}]]
+|Row ${i}-3|Data G|Data H|Data I
+|Row ${i}-4|[[Doc ${inlineTarget3}&gt;&gt;doc:${targetSpace}.Document${inlineTarget3}]]|Data K|Data L
+
+== Section 3: Analysis ==
+
+At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident.
+
+1. First ordered item for document ${i}
+1. Second ordered item — compare with [[Document ${inlineTarget3}&gt;&gt;doc:${targetSpace}.Document${inlineTarget3}]]
+1. Third ordered item discussing further implications
+1. Fourth ordered item with concluding remarks
+
+== Section 4: Technical Notes ==
+
+Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin mauris.
+
+{{box}}
+Sample content block for document ${i}
+Configuration entry: doc.id=${i}
+Category: auto-generated
+Priority: normal
+{{/box}}
+
+== Section 5: Summary ==
+
+Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus. Etiam porta sem malesuada magna mollis euismod. For a broader perspective, consult [[Generated Document ${inlineTarget1}&gt;&gt;doc:${targetSpace}.Document${inlineTarget1}]] and [[Generated Document ${inlineTarget2}&gt;&gt;doc:${targetSpace}.Document${inlineTarget2}]].
+
+Maecenas sed diam eget risus varius blandit sit amet non magna. Cras justo odio, dapibus ut facilisis in, egestas eget quam. Vestibulum id ligula porta felis euismod semper.
+
+${linksSection}
+")
+      #set ($fullContent = "${$mediumDocumentContentTemplate}${padding}")
+      ##
+      #set ($void = $doc.setContent($fullContent))
+      #set ($void = $doc.setTitle("Generated Document ${i}"))
+      ##
+      ## Objects
+      #foreach($i in [1..$maxObjects])
+        #set ($obj = $doc.newObject('XWiki.XWikiComments'))
+        #set ($void = $obj.set('author', $xcontext.user))
+        #set ($void = $obj.set('comment', "This is comment number $i"))
+        #set ($void = $obj.set('date', $datetool.date))
+      #end
+      ##
+      ## Create attachments
+      #foreach($i in [1..$maxAttachments])
+        #set ($fileName = "attachment_${i}.txt")
+        #set ($attachmentContent = "Attachment $i - ${megabyteTxt}")
+        #set ($attachmentContentBytes = $attachmentContent.getBytes('UTF-8'))
+        #set ($discard = $doc.addAttachment($fileName, $attachmentContentBytes))
+      #end
+      ##
+      ## Save
+      #set ($void = $doc.save("Auto-generated document ${i}"))
+      #set ($created = $created + 1)
+    #end
+  #end
+  ##
+  {{success}}
+    Successfully created **${created}** documents with ${maxObjects} objects and ${maxAttachments} attachments in space [[${targetSpace}.WebHome]]. **${skipped}** were already created.
+  {{/success}}
+#end
+
+#set ($documentsQuota = $numbertool.toNumber($request.documentsQuota).intValue())
+#set ($targetSpace = $request.targetSpace)
+#if (!$targetSpace)
+  #set ($targetSpace = 'TestPages')
+#end
+
+### Users
+#########
+
+#macro (createUser $userDoc $groupObj $filtersQuota $targetFilterSpace)
+  #set($userObj = $userDoc.newObject('XWiki.XWikiUsers'))
+  #set($discard = $userObj.set('first_name', "Test"))
+  #set($discard = $userObj.set('last_name', "User${i}"))
+  #set($discard = $userObj.set('email', "${username}@example.com"))
+  #set($discard = $userObj.set('active', 1))
+  #set($discard = $userDoc.setContent(''))
+  #set($discard = $userDoc.save("Auto-generated user"))
+  ##
+  ## Add user to XWikiAllGroup
+  #set($groupObj = $groupDoc.newObject('XWiki.XWikiGroups'))
+  #set($discard = $groupObj.set('member', "XWiki.${username}"))
+  ##
+  ## Add watched pages
+  #if ($filtersQuota &gt; 0)
+    ## Get the UserReference
+    #set ($userReference = $userReferenceResolver.resolve($userDoc.documentReference))
+    #foreach ($i in [1..$filtersQuota])
+      ## Get the WatchedLocationReference
+      #set ($watchedRef = $watchedEntityFactory.createWatchedLocationReference("document:${targetFilterSpace}.Document${i}.WebHome"))
+      ## Watch the location
+      #set ($void = $watchedEntitiesManager.watch($watchedRef, $userReference))
+    #end
+  #end
+#end
+
+#macro (createUsers $index $count $groupObj $filtersQuota $targetFilterSpace)
+  #set ($created = 0)
+  #set ($skipped = 0)
+  #set ($created = 0)
+  #set ($min = $index + 1)
+  #set ($max = $index + $count)
+  #foreach($i in [$min..$max])
+    #set($username = "TestUser${i}")
+    #set($userDoc = $xwiki.getDocument("XWiki.${username}"))
+    ##
+    #if($userDoc.isNew())
+      #createUser($userDoc, $groupObj, $filtersQuota, $targetFilterSpace)
+      ##
+      #set ($created = $created + 1)
+    #else
+      #set ($skipped = $skipped + 1)
+    #end
+  #end
+  ##
+  #if ($created &gt; 0)
+    #set($discard = $groupDoc.save("Add auto-generated users"))
+  #end
+  {{success}}
+    Successfully created **${created}** users with **$filtersQuota** watched pages. **${skipped}** were already created.
+  {{/success}}
+#end
+#set ($usersQuota = $numbertool.toNumber($request.usersQuota).intValue())
+{{/velocity}}
+
+{{velocity output="false"}}
+## Avoid producing events for all the generated data
+$fillTool.begin()
+{{/velocity}}
+
+{{velocity}}
+#if ($documentsQuota &amp;&amp; $documentsQuota &gt; 0)
+  $services.security.authorization.checkAccess('admin', "wiki:${xcontext.database}")
+  #addSpace($targetSpace)
+  == Filling the wiki with $documentsQuota documents
+
+  === 1 huge page
+
+  //maximum size wiki content (200 000 characters), 10 000 xobjects, 4GO attachment//
+
+  #addHugeDocument($targetSpace, 200, 10000, 4096)
+
+  #set ($bigdocumentsQuota = $documentsQuota - 1)
+  #set ($bigdocumentsQuota = $bigdocumentsQuota / 3)
+  === $bigdocumentsQuota big pages
+
+  //medium size wiki content, 100 xobjects, 10 attachments//
+
+  #addDocuments($bigdocumentsQuota, "${targetSpace}.Big", 100,  10)
+
+  #set ($mediumdocumentsQuota = $documentsQuota - $bigdocumentsQuota - 1)
+  #set ($mediumdocumentsSpace = "${targetSpace}.Medium")
+  === $mediumdocumentsQuota medium pages
+
+  //medium size wiki content, no xobject, no attachment//
+
+  #addDocuments($mediumdocumentsQuota, $mediumdocumentsSpace, 0, 0)
+#end
+{{/velocity}}
+
+{{velocity}}
+#if ($usersQuota &amp;&amp; $usersQuota &gt; 0)
+  $services.security.authorization.checkAccess('admin', "wiki:${xcontext.database}")
+  #set ($totalUsers = 0)
+  #set($defaultGroup = 'XWiki.XWikiAllGroup')
+  #set($groupDoc = $xwiki.getDocument($defaultGroup))
+  #set($groupObj = $groupDoc.newObject('XWiki.XWikiGroups'))
+  ## Get the DocumentReference -&gt; UserReference resolver
+  #set ($userReferenceResolver = $services.component.getInstance('org.xwiki.user.UserReferenceResolver&lt;org.xwiki.model.reference.DocumentReference&gt;', 'document'))
+  ## Get the WatchedEntitiesManager component
+  #set ($watchedEntitiesManager = $services.component.getInstance('org.xwiki.notifications.filters.watch.WatchedEntitiesManager'))
+  ## Get the WatchedEntityFactory component
+  #set ($watchedEntityFactory = $services.component.getInstance('org.xwiki.notifications.filters.watch.WatchedEntityFactory'))
+  ##
+  == Filling the wiki with $usersQuota users
+
+  === 1 user, watching the entire wiki
+
+  #createUsers($totalUsers 1 $groupObj 0)
+  #set ($totalUsers = 1)
+  ## Watch the wiki
+  #set ($userReference = $userReferenceResolver.resolve("XWiki.TestUser1"))
+  #set ($watchedRef = $watchedEntityFactory.createWatchedLocationReference('wiki:xwiki'))
+  #if ($watchedEntitiesManager.watch($watchedRef, $userReference))
+
+    {{success}}Made user XWiki.TestUser1 watch the entire wiki{{/success}}
+  #end
+
+  #if ($usersQuota &gt; 1)
+    === 1 user, watching all the generated medium pages
+
+    #createUsers($totalUsers 1 $groupObj $mediumdocumentsQuota $mediumdocumentsSpace)
+    #set ($totalUsers = $totalUsers + 1)
+
+    #if ($mediumdocumentsQuota &gt;= 100)
+      === 5 users, watching 100 of the generated medium pages
+
+      #createUsers($totalUsers 5 $groupObj 100 $mediumdocumentsSpace)
+      #set ($totalUsers = $totalUsers + 1)
+
+    #end
+    #if ($mediumdocumentsQuota &gt; 10)
+      #set ($thirdUsersQuota = $usersQuota - $totalUsers)
+      #set ($thirdUsersQuota = $thirdUsersQuota / 3)
+      #if ($thirdUsersQuota &gt; 0)
+        === $thirdUsersQuota users, watching 10 of the generated medium pages
+
+        #createUsers($totalUsers $thirdUsersQuota $groupObj 10 $mediumdocumentsSpace)
+        #set ($totalUsers = $totalUsers + $thirdUsersQuota)
+      #end
+
+    #end
+    #set ($remainingUsers = $usersQuota - $totalUsers)
+    === **$remainingUsers** users, not waitching any page
+
+    #createUsers($totalUsers $remainingUsers $groupObj 0)
+  #end
+#end
+{{/velocity}}
+
+{{velocity output="false"}}
+$fillTool.end()
+{{/velocity}}
+{{/async}}</content>
+</xwikidoc>
