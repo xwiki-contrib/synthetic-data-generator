@@ -261,7 +261,7 @@ The following documents are related to this one:
         #if ($target == $i)
           #set ($target = ($target % $maxDocument) + 1)
         #end
-        #set ($linksSection = "${linksSection}* [[Generated Document ${target}&gt;&gt;doc:${targetSpace}.Document${target}]]
+        #set ($linksSection = "${linksSection}* [[Generated Document ${target}&gt;&gt;${targetSpace}.Document${target}]]
 ")
       #end
       ##
@@ -288,7 +288,7 @@ The following documents are related to this one:
         #end
         #set ($padding = "${padding}
 
-Paragraph block ${j} for document ${i}: Aliquam erat volutpat. Nam dui mi, tincidunt quis, accumsan porttitor, facilisis luctus, metus. Phasellus ultrices nulla quis nibh. Quisque a lectus. See also [[Document ${padTarget}&gt;&gt;doc:${targetSpace}.Document${padTarget}]] for more details. Pellentesque fermentum dolor. Aliquam quam lectus, facilisis auctor, ultrices ut, elementum vulputate, nunc.")
+Paragraph block ${j} for document ${i}: Aliquam erat volutpat. Nam dui mi, tincidunt quis, accumsan porttitor, facilisis luctus, metus. Phasellus ultrices nulla quis nibh. Quisque a lectus. See also [[Document ${padTarget}&gt;&gt;${targetSpace}.Document${padTarget}]] for more details. Pellentesque fermentum dolor. Aliquam quam lectus, facilisis auctor, ultrices ut, elementum vulputate, nunc.")
       #end
       #set ($mediumDocumentContentTemplate = "= Generated Document ${i} =
 
@@ -296,34 +296,34 @@ This is an automatically generated document number **${i}** out of **${maxDocume
 
 == Overview ==
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris. This topic is also covered in [[Generated Document ${inlineTarget2}&gt;&gt;doc:${targetSpace}.Document${inlineTarget2}]] and [[Generated Document ${inlineTarget3}&gt;&gt;doc:${targetSpace}.Document${inlineTarget3}]].
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris. This topic is also covered in [[Generated Document ${inlineTarget2}&gt;&gt;${targetSpace}.Document${inlineTarget2}]] and [[Generated Document ${inlineTarget3}&gt;&gt;${targetSpace}.Document${inlineTarget3}]].
 
 == Section 1: Introduction ==
 
 Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Vestibulum tortor quam, feugiat vitae, ultricies eget, tempor sit amet, ante. Donec eu libero sit amet quam egestas semper.
 
-* Item one for document ${i} — see also [[Document ${inlineTarget1}&gt;&gt;doc:${targetSpace}.Document${inlineTarget1}]]
+* Item one for document ${i} — see also [[Document ${inlineTarget1}&gt;&gt;${targetSpace}.Document${inlineTarget1}]]
 * Item two with some additional text to increase size
 * Item three with even more descriptive content here
 * Item four containing relevant placeholder information
-* Item five referencing [[Document ${inlineTarget2}&gt;&gt;doc:${targetSpace}.Document${inlineTarget2}]]
+* Item five referencing [[Document ${inlineTarget2}&gt;&gt;${targetSpace}.Document${inlineTarget2}]]
 
 == Section 2: Details ==
 
 Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.
 
 |=Column A|=Column B|=Column C|=Column D
-|Row ${i}-1|Data A|[[Doc ${inlineTarget1}&gt;&gt;doc:${targetSpace}.Document${inlineTarget1}]]|Data C
-|Row ${i}-2|Data D|Data E|[[Doc ${inlineTarget2}&gt;&gt;doc:${targetSpace}.Document${inlineTarget2}]]
+|Row ${i}-1|Data A|[[Doc ${inlineTarget1}&gt;&gt;${targetSpace}.Document${inlineTarget1}]]|Data C
+|Row ${i}-2|Data D|Data E|[[Doc ${inlineTarget2}&gt;&gt;${targetSpace}.Document${inlineTarget2}]]
 |Row ${i}-3|Data G|Data H|Data I
-|Row ${i}-4|[[Doc ${inlineTarget3}&gt;&gt;doc:${targetSpace}.Document${inlineTarget3}]]|Data K|Data L
+|Row ${i}-4|[[Doc ${inlineTarget3}&gt;&gt;${targetSpace}.Document${inlineTarget3}]]|Data K|Data L
 
 == Section 3: Analysis ==
 
 At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident.
 
 1. First ordered item for document ${i}
-1. Second ordered item — compare with [[Document ${inlineTarget3}&gt;&gt;doc:${targetSpace}.Document${inlineTarget3}]]
+1. Second ordered item — compare with [[Document ${inlineTarget3}&gt;&gt;${targetSpace}.Document${inlineTarget3}]]
 1. Third ordered item discussing further implications
 1. Fourth ordered item with concluding remarks
 
@@ -340,13 +340,13 @@ Priority: normal
 
 == Section 5: Summary ==
 
-Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus. Etiam porta sem malesuada magna mollis euismod. For a broader perspective, consult [[Generated Document ${inlineTarget1}&gt;&gt;doc:${targetSpace}.Document${inlineTarget1}]] and [[Generated Document ${inlineTarget2}&gt;&gt;doc:${targetSpace}.Document${inlineTarget2}]].
+Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus. Etiam porta sem malesuada magna mollis euismod. For a broader perspective, consult [[Generated Document ${inlineTarget1}&gt;&gt;${targetSpace}.Document${inlineTarget1}]] and [[Generated Document ${inlineTarget2}&gt;&gt;${targetSpace}.Document${inlineTarget2}]].
 
 Maecenas sed diam eget risus varius blandit sit amet non magna. Cras justo odio, dapibus ut facilisis in, egestas eget quam. Vestibulum id ligula porta felis euismod semper.
 
 ${linksSection}
 ")
-      #set ($fullContent = "${$mediumDocumentContentTemplate}${padding}")
+      #set ($fullContent = "${mediumDocumentContentTemplate}${padding}")
       ##
       #set ($void = $doc.setContent($fullContent))
       #set ($void = $doc.setTitle("Generated Document ${i}"))
