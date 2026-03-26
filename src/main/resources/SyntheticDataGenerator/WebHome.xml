@@ -47,15 +47,15 @@
   {{html}}
     &lt;form&gt;
       &lt;dl&gt;
+        &lt;dt&gt;Users&lt;/dt&gt;
+        &lt;dd class="box"&gt;
+          &lt;label&gt;Number of users: &lt;input type="number" name="usersQuota"#if($usersQuota) value="$usersQuota"#end/&gt;&lt;/label&gt;
+        &lt;/dd&gt;
         &lt;dt&gt;Pages&lt;/dt&gt;
         &lt;dd class="box"&gt;
           &lt;label&gt;Target space: &lt;input type="input" name="targetSpace"#if($targetSpace) value="${escapetool.xml($targetSpace)}"#end/&gt;&lt;/label&gt;
           &lt;br/&gt;
           &lt;label&gt;Number of documents: &lt;input type="number" name="documentsQuota"#if($documentsQuota) value="$documentsQuota"#end/&gt;&lt;/label&gt;
-        &lt;/dd&gt;
-        &lt;dt&gt;Users&lt;/dt&gt;
-        &lt;dd class="box"&gt;
-          &lt;label&gt;Number of users: &lt;input type="number" name="usersQuota"#if($usersQuota) value="$usersQuota"#end/&gt;&lt;/label&gt;
         &lt;/dd&gt;
       &lt;/dl&gt;
       &lt;input type="submit" value="Start" /&gt;
@@ -206,12 +206,12 @@ fillTool = new FillUtils(services)
 
 #macro(addHugeDocument $targetSpace $contentSize $maxObjects $attachmentSize)
   #set ($docReference = "${targetSpace}.HugePage.WebHome")
-  #set ($doc = $xwiki.getDocument($docReference))
-  #if (!$doc.isNew())
+  #if ($xwiki.exists($docReference))
     {{info}}
       Skip creation of huge document [[$docReference]], it already existed.
     {{/info}}
   #else
+    #set ($doc = $xwiki.getDocument($docReference))
     #set ($void = $fillTool.setBigContent($doc, $contentSize))
     #set ($void = $doc.setTitle("Huge Document"))
     ##
@@ -242,10 +242,10 @@ fillTool = new FillUtils(services)
   #addSpace($targetSpace)
   #foreach ($i in [1..$maxDocument])
     #set ($docReference = "${targetSpace}.Document${i}.WebHome")
-    #set ($doc = $xwiki.getDocument($docReference))
-    #if (!$doc.isNew())
+    #if ($xwiki.exists($docReference))
       #set ($skipped = $skipped + 1)
     #else
+      #set ($doc = $xwiki.getDocument($docReference))
       ## Build a set of random links to other generated documents
       #set ($linksSection = '== Related Documents ==
 
@@ -419,10 +419,11 @@ ${linksSection}
   #set ($min = $index + 1)
   #set ($max = $index + $count)
   #foreach($i in [$min..$max])
-    #set($username = "TestUser${i}")
-    #set($userDoc = $xwiki.getDocument("XWiki.${username}"))
-    ##
-    #if($userDoc.isNew())
+    #set ($username = "TestUser${i}")
+    #set ($userReference = "XWiki.${username}")
+    #if (!$xwiki.exists($userReference))
+      #set($userDoc = $xwiki.getDocument($userReference))
+      ##
       #createUser($userDoc, $groupObj, $filtersQuota, $targetFilterSpace)
       ##
       #set ($created = $created + 1)
